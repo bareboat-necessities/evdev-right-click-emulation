@@ -5,8 +5,12 @@ orbs:
 executors:
   boot-linux:
     machine:
-      enabled: true
-      image: ubuntu-1604:202010-01
+      resource_class: large
+      image: ubuntu-2204:2023.10.1
+  boot-linux-arm:
+    machine:
+      resource_class: arm.large
+      image: ubuntu-2204:2023.10.1
 commands:
   git-checkout:
     steps:
@@ -27,93 +31,40 @@ commands:
       - git-checkout
       - build-n-publish-debian
 jobs:
-  build-debian-buster-arm64:
-    executor: boot-linux
+  build-debian-bookworm-arm64:
+    executor: boot-linux-arm
     environment:
-      - DOCKER_IMAGE=arm64v8/debian:buster
-      - CONTAINER_DISTRO=debian:buster
-      - PKG_RELEASE=buster
+      - DOCKER_IMAGE=arm64v8/debian:bookworm
+      - CONTAINER_DISTRO=debian:bookworm
+      - PKG_RELEASE=bookworm
       - PKG_DISTRO=debian
-      - EMU=on
+      - PKG_ARCH=arm64
+      - EMU=off
     steps:
       - do-all
-  build-debian-buster-arm32:
-    executor: boot-linux
+  build-debian-bookworm-arm32:
+    executor: boot-linux-arm
     environment:
-      - DOCKER_IMAGE=arm32v7/debian:buster
-      - CONTAINER_DISTRO=debian:buster
-      - PKG_RELEASE=buster
+      - DOCKER_IMAGE=arm32v7/debian:bookworm
+      - CONTAINER_DISTRO=debian:bookworm
+      - PKG_RELEASE=bookworm
       - PKG_DISTRO=debian
-      - EMU=on
+      - EMU=off
     steps:
       - do-all
-  build-debian-buster-amd64:
+  build-debian-bookworm-amd64:
     executor: boot-linux
     environment:
-      - DOCKER_IMAGE=amd64/debian:buster
-      - CONTAINER_DISTRO=debian:buster
-      - PKG_RELEASE=buster
+      - DOCKER_IMAGE=amd64/debian:bookworm
+      - CONTAINER_DISTRO=debian:bookworm
+      - PKG_RELEASE=bookworm
       - PKG_DISTRO=debian
-    steps:
-      - do-all
-  build-debian-bullseye-arm64:
-    executor: boot-linux
-    environment:
-      - DOCKER_IMAGE=arm64v8/debian:bullseye
-      - CONTAINER_DISTRO=debian:bullseye
-      - PKG_RELEASE=bullseye
-      - PKG_DISTRO=debian
-      - EMU=on
-    steps:
-      - do-all
-  build-debian-bullseye-arm32:
-    executor: boot-linux
-    environment:
-      - DOCKER_IMAGE=arm32v7/debian:bullseye
-      - CONTAINER_DISTRO=debian:bullseye
-      - PKG_RELEASE=bullseye
-      - PKG_DISTRO=debian
-      - EMU=on
-    steps:
-      - do-all
-  build-debian-bullseye-amd64:
-    executor: boot-linux
-    environment:
-      - DOCKER_IMAGE=amd64/debian:bullseye
-      - CONTAINER_DISTRO=debian:bullseye
-      - PKG_RELEASE=bullseye
-      - PKG_DISTRO=debian
-    steps:
-      - do-all
-  build-raspbian-buster-arm32:
-    executor: boot-linux
-    environment:
-      - DOCKER_IMAGE=arm32v7/debian:buster
-      - CONTAINER_DISTRO=debian:buster
-      - PKG_RELEASE=buster
-      - PKG_DISTRO=raspbian
-      - EMU=on
-    steps:
-      - do-all
-  build-raspbian-buster-arm64:
-    executor: boot-linux
-    environment:
-      - DOCKER_IMAGE=arm64v8/debian:buster
-      - CONTAINER_DISTRO=debian:buster
-      - PKG_RELEASE=buster
-      - PKG_DISTRO=raspbian
-      - EMU=on
     steps:
       - do-all
 workflows:
   version: 2
   build_all:
     jobs:
-      - build-debian-buster-arm64
-      - build-debian-buster-arm32
-      - build-debian-buster-amd64
-      - build-debian-bullseye-arm64
-      - build-debian-bullseye-arm32
-      - build-debian-bullseye-amd64
-      - build-raspbian-buster-arm32
-      - build-raspbian-buster-arm64
+      - build-debian-bookworm-arm64
+      - build-debian-bookworm-amd64
+      - build-debian-bookworm-arm32

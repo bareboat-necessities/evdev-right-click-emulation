@@ -1,4 +1,4 @@
-evdev-rce (1.0.0+dfsg-1) buster; urgency=low
+evdev-rce (1.0.0.1) stable; urgency=medium
 
   * config files
 
