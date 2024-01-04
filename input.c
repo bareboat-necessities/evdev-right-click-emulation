@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/stat.h>
 #include <sys/select.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
@@ -19,6 +20,12 @@ struct input_state_t {
     struct timespec start;
     struct libevdev_uinput *uinput;
 };
+
+int fd_is_valid(int fd) {
+    struct stat s;
+    fstat(fd, &s);
+    return s.st_nlink > 0;
+}
 
 void free_evdev(struct libevdev *evdev) {
     int fd = libevdev_get_fd(evdev);
@@ -142,15 +149,32 @@ void process_evdev_input(int num, struct libevdev **evdev) {
     int nfds = build_fd_set(&fds, state.fd_timer, num, evdev);
 
     struct input_event ev;
+    int fd_valid = 1;
+    struct timespec last;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &last);
     // Detect events from the fds
     while (select(nfds, &fds, NULL, NULL, NULL) > 0) {
+
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+        uint64_t delta_us = millis(now) - millis(last);
+        
         // The timer fd
         if (FD_ISSET(state.fd_timer, &fds))
             on_timer_expire(&state);
 
         for (unsigned int i = 0; i < num; i++) {
+            int fd = libevdev_get_fd(evdev[i]);
+            if (delta_us >= 5000) {
+                clock_gettime(CLOCK_MONOTONIC_RAW, &last);
+                if (!fd_is_valid(fd)) {
+                    fd_valid = 0;
+                    sleep(5);
+                    break;
+                }
+            }
             // Can we read an event?
-            if (!FD_ISSET(libevdev_get_fd(evdev[i]), &fds))
+            if (!FD_ISSET(fd, &fds))
                 continue;
             
             // Read all the available events
@@ -158,6 +182,10 @@ void process_evdev_input(int num, struct libevdev **evdev) {
                     LIBEVDEV_READ_FLAG_NORMAL, &ev) == 0) {
                 on_input_event(&state, &ev, i);
             }
+            fd_valid = 1;
+        }
+        if (!fd_valid) {
+            break;
         }
 
         // Reset the fd_set for next iteration
