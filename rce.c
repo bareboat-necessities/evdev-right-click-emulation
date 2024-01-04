@@ -119,46 +119,48 @@ int find_evdev(struct libevdev **devices) {
 }
 
 int main() {
-    // Try to read some configurable options from env
-    char *env = NULL;
-    if ((env = getenv("LONG_CLICK_INTERVAL")) != NULL) {
-        int ms = atoi(env);
-        int sec = 0;
-        if (ms >= 1000) {
-            sec = ms / 1000;
-            ms = ms % 1000;
+    while (1) {
+        // Try to read some configurable options from env
+        char *env = NULL;
+        if ((env = getenv("LONG_CLICK_INTERVAL")) != NULL) {
+            int ms = atoi(env);
+            int sec = 0;
+            if (ms >= 1000) {
+                sec = ms / 1000;
+                ms = ms % 1000;
+            }
+            LONG_CLICK_INTERVAL.tv_sec = sec;
+            LONG_CLICK_INTERVAL.tv_nsec = ((long) ms) * 1000 * 1000;
         }
-        LONG_CLICK_INTERVAL.tv_sec = sec;
-        LONG_CLICK_INTERVAL.tv_nsec = ((long) ms) * 1000 * 1000;
+    
+        if ((env = getenv("LONG_CLICK_FUZZ")) != NULL) {
+            LONG_CLICK_FUZZ = atoi(env);
+        }
+    
+        if ((env = getenv("TOUCH_DEVICE_BLACKLIST")) != NULL) {
+            TOUCH_DEVICE_BLACKLIST = malloc(strlen(env) + 3);
+            sprintf(TOUCH_DEVICE_BLACKLIST, "|%s|", env);
+        }
+    
+        if ((env = getenv("TOUCH_DEVICE_WHITELIST")) != NULL) {
+            printf("Note: Whitelist mode is enabled. This overrides the blacklist.\n");
+            TOUCH_DEVICE_WHITELIST = malloc(strlen(env) + 3);
+            sprintf(TOUCH_DEVICE_WHITELIST, "|%s|", env);
+        }
+    
+        struct libevdev *devices[MAX_TOUCHSCREEN_NUM];
+        int device_num;
+        if ((device_num = find_evdev(devices)) < 0) {
+            fprintf(stderr, "find_evdev() error\n");
+            sleep(5);
+        } else if (device_num == 0) {
+            fprintf(stderr, "No touchscreen is found\n");
+            sleep(5);
+        } else {
+            process_evdev_input(device_num, devices);
+            free(TOUCH_DEVICE_BLACKLIST);
+            free(TOUCH_DEVICE_WHITELIST);
+        }    
     }
-
-    if ((env = getenv("LONG_CLICK_FUZZ")) != NULL) {
-        LONG_CLICK_FUZZ = atoi(env);
-    }
-
-    if ((env = getenv("TOUCH_DEVICE_BLACKLIST")) != NULL) {
-        TOUCH_DEVICE_BLACKLIST = malloc(strlen(env) + 3);
-        sprintf(TOUCH_DEVICE_BLACKLIST, "|%s|", env);
-    }
-
-    if ((env = getenv("TOUCH_DEVICE_WHITELIST")) != NULL) {
-        printf("Note: Whitelist mode is enabled. This overrides the blacklist.\n");
-        TOUCH_DEVICE_WHITELIST = malloc(strlen(env) + 3);
-        sprintf(TOUCH_DEVICE_WHITELIST, "|%s|", env);
-    }
-
-    struct libevdev *devices[MAX_TOUCHSCREEN_NUM];
-    int device_num;
-    if ((device_num = find_evdev(devices)) < 0) {
-        return 1;
-    }
-    if (device_num == 0) {
-        fprintf(stderr, "No touchscreen is found\n");
-        return 1;
-    }
-
-    process_evdev_input(device_num, devices);
-    free(TOUCH_DEVICE_BLACKLIST);
-    free(TOUCH_DEVICE_WHITELIST);
     return 0;
 }
