@@ -158,9 +158,9 @@ int main() {
             sleep(5);
         } else {
             process_evdev_input(device_num, devices);
-            free(TOUCH_DEVICE_BLACKLIST);
-            free(TOUCH_DEVICE_WHITELIST);
         }    
+        free(TOUCH_DEVICE_BLACKLIST);
+        free(TOUCH_DEVICE_WHITELIST);
     }
     return 0;
 }
