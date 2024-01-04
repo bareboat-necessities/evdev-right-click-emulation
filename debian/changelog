@@ -1,6 +1,7 @@
-evdev-rce (1.0.0.3) stable; urgency=medium
+evdev-rce (1.0.0.4) stable; urgency=medium
 
   * config files
+  * disconnecting and reconnecting bugs fixes
 
  -- mgrouch <mgrouch@users.github.com>  Fri, 30 Oct 2020 01:55:14 -0400
 
