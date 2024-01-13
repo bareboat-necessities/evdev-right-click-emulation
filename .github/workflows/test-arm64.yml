@@ -1,0 +1,24 @@
+name: Build
+on: [push]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        runtime: [ linux-arm64 ]
+        include:
+        - runtime: linux-arm64
+          os: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Check arm64
+        if: startsWith(matrix.os, 'ubuntu') && matrix.runtime == 'linux-arm64'
+        run: file /usr/bin/ls
