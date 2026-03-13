@@ -118,7 +118,19 @@ int find_evdev(struct libevdev **devices) {
     return device_num;
 }
 
-int main() {
+int main(int argc, char **argv) {
+    if (argc > 1) {
+        if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
+            printf("Usage: %s [--help]\n", argv[0]);
+            printf("Runs evdev right-click emulation daemon.\n");
+            return 0;
+        }
+
+        fprintf(stderr, "Unknown option: %s\n", argv[1]);
+        fprintf(stderr, "Try '%s --help' for usage.\n", argv[0]);
+        return 1;
+    }
+
     while (1) {
         // Try to read some configurable options from env
         char *env = NULL;
