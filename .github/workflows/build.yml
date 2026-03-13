@@ -30,6 +30,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install build dependencies
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential fakeroot dpkg-dev devscripts debhelper \
+            libevdev-dev libinput-dev ca-certificates libdistro-info-perl
+
       - name: Compute package version
         run: |
           set -euo pipefail
@@ -50,14 +58,6 @@ jobs:
             echo "DEB_VERSION=${base_upstream}+sha${GITHUB_SHA::7}-${base_revision}" >> "$GITHUB_ENV"
           fi
           echo "DEB_ARCH=$(dpkg --print-architecture)" >> "$GITHUB_ENV"
-
-      - name: Install build dependencies
-        run: |
-          set -euo pipefail
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            build-essential fakeroot dpkg-dev devscripts debhelper \
-            libevdev-dev libinput-dev ca-certificates libdistro-info-perl
 
       - name: Patch changelog version for CI artifact
         run: |
