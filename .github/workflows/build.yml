@@ -1,0 +1,123 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: debian trixie (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: amd64
+            runs_on: ubuntu-latest
+          - name: arm64
+            runs_on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs_on }}
+    container:
+      image: debian:trixie
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute package version
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "ARTIFACT_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+            echo "DEB_VERSION=${GITHUB_REF_NAME#v}-1" >> "$GITHUB_ENV"
+          else
+            echo "ARTIFACT_TAG=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+            echo "DEB_VERSION=0.0.0+sha${GITHUB_SHA::7}-1" >> "$GITHUB_ENV"
+          fi
+          echo "DEB_ARCH=$(dpkg --print-architecture)" >> "$GITHUB_ENV"
+
+      - name: Install build dependencies
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential fakeroot dpkg-dev devscripts debhelper \
+            libevdev-dev libinput-dev ca-certificates
+
+      - name: Patch changelog version for CI artifact
+        run: |
+          set -euo pipefail
+          dch --distribution trixie --newversion "${DEB_VERSION}" \
+            "CI build ${ARTIFACT_TAG}" \
+            --maintmaint --controlmaint
+
+      - name: Build Debian package
+        run: |
+          set -euo pipefail
+          dpkg-buildpackage -us -uc -b
+
+      - name: Smoke test binary
+        run: |
+          set -euo pipefail
+          ./out/evdev-rce --help || true
+
+      - name: Collect package artifact
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          cp -v ../evdev-rce_${DEB_VERSION}_${DEB_ARCH}.deb artifacts/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.name }}
+          path: artifacts/*.deb
+
+  publish:
+    name: publish APT flat repository
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Build flat APT repository (Packages/Release)
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev apt-utils
+
+          rm -rf apt-repo
+          mkdir -p apt-repo
+
+          cp -v release-assets/linux-amd64/*.deb apt-repo/
+          cp -v release-assets/linux-arm64/*.deb apt-repo/
+
+          pushd apt-repo >/dev/null
+          dpkg-scanpackages --multiversion . /dev/null > Packages
+          gzip -9c Packages > Packages.gz
+          apt-ftparchive release . > Release
+          popd >/dev/null
+
+      - name: Publish versioned release (tag v*)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/linux-amd64/*.deb
+            release-assets/linux-arm64/*.deb
+            apt-repo/*
+
+      - name: Publish/update stable APT release (tag "apt")
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apt
+          name: APT repository (stable)
+          target_commitish: ${{ github.sha }}
+          files: |
+            apt-repo/*
