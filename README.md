@@ -68,3 +68,25 @@ LONG_CLICK_INTERVAL=500 LONG_CLICK_FUZZ=50 evdev-rce
 ```
 
 To customize those options.
+
+Install from GitHub APT repository
+---
+
+This repository's GitHub Actions `build.yml` workflow publishes a flat Debian APT repository to the GitHub release tag `apt` whenever a version tag (`v*`) is built.
+
+To install from that repository:
+
+```bash
+sudo mkdir -p /etc/apt/sources.list.d
+cat <<'EOF' | sudo tee /etc/apt/sources.list.d/evdev-rce-github.list
+deb [trusted=yes] https://github.com/bareboat-necessities/evdev-right-click-emulation/releases/download/apt/ ./
+EOF
+
+sudo apt-get update
+sudo apt-get install evdev-rce
+```
+
+Notes:
+
+- The repository is currently published as an unsigned flat repository, so the example uses `trusted=yes`.
+- Packages are published to the `apt` release tag and include the generated `Packages`, `Packages.gz`, and `Release` metadata files alongside `.deb` artifacts.
